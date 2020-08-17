@@ -1,0 +1,170 @@
+<!-- HOME画面 -->
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>嗜好調査（テスト）</title>
+    <link rel="stylesheet" href="./css/jupiter.css">
+    <link rel="stylesheet" href="./css/home.css">
+</head>
+
+<body>
+    <header>
+    </header>
+    <p class="loginname" id="loginName">こんにちは？？？さん</p>
+
+    <table class="midasi">
+        <tr>
+            <td><a href='./home.html'>HOME</a></td>
+            <td><a href='./search.html'>ビデオを探す</a></td>
+            <td><a href='./bookList.html'>取り置きリスト</a></td>
+        </tr>
+    </table>
+    <h3>嗜好調査（テスト）</h3>
+    <h1>どっちが好き？</h1>
+    <section id="video1"></section>と<section id="video2"></section>
+    <footer>
+        <!-- <p>©　Copyright 2020 Jupiter Inc. All Rights Reserved.</p> -->
+    </footer>
+</body>
+
+</html>
+
+
+<script>
+    /*
+    version: 0.1
+    author: Hidemaru-Jupiter
+    */
+    const user_idName = document.cookie.split('; ').find(row => row.startsWith('user_idName')).split('=')[1];
+    const user_pass = document.cookie.split('; ').find(row => row.startsWith('user_pass')).split('=')[1];
+    console.log(user_idName);
+    console.log(user_pass);
+    window.addEventListener('load', () => {
+        document.getElementById('loginName').innerHTML = "こんにちは" + user_idName + "さん";
+        getInteresting();
+        getCategory(false);
+    });
+    function getInteresting(){
+        const postData_getInteresting = new FormData;
+        postData_getInteresting.set('table', 'interesting');
+        postData_getInteresting.set('function', 'getInteresting');
+        postData_getInteresting.set('user_idName', user_idName);
+        postData_getInteresting.set('user_pass', user_pass);
+        const data_getInteresting = {
+            method: 'POST',
+            body: postData_getInteresting
+        };
+        fetch('../cgi-bin/fetchInterface.php', data_getInteresting)
+            .then((res) => res.json())
+            .then((json)=>{
+                let array = json;
+                let categoryArray = {};
+                Object.keys(array).forEach(key => {
+                    //日付条件を加えるならココに追加
+                    if(categoryArray[array[key]["category_id"]] == null){//undifined?
+                        console.log("分岐１ categoryArray[array["+key+"][category_id]]="+categoryArray[array[key]["category_id"]]+" array["+key+"][category_id]="+array[key]["category_id"]);
+                        categoryArray[array[key]["category_id"]] = 1;
+                    }else{
+                        console.log("分岐２ categoryArray[array["+key+"][category_id]]="+categoryArray[array[key]["category_id"]]+" array["+key+"][category_id]="+array[key]["category_id"]);
+                        categoryArray[array[key]["category_id"]] += 1;
+                    }
+                });
+                console.log("category");
+                console.log(categoryArray);
+                let max = 0;
+                let max_category_id = null;
+                Object.keys(categoryArray).forEach(key => {
+                    if(max < categoryArray[key]){
+                        console.log("分岐３ categoryArray["+key+"]="+categoryArray[key]+" max="+max);
+                        max = categoryArray[key];
+                        max_category_id = key;
+                    }
+                });
+                console.log("max:"+ max_category_id + " of "+max);
+                if(max_category_id == null){
+                    getCategory(true);
+                }else{
+                    imgLoad(max_category_id,1);
+                }
+            });
+    }
+    function getCategory(one){
+        const postData = new FormData; // フォーム方式で送る場合
+		postData.set('table', 'category'); // set()で格納する
+		postData.set('function', 'getCategory');
+		const data = {
+			method: 'POST',
+			body: postData
+		};
+		fetch('../cgi-bin/fetchInterface.php', data)
+			.then((res) => res.json())
+			.then(function (json) {
+                let array = json;
+                if(one){
+                    imgLoad(array[getRandomInt(array.length)]["category_id"],1);
+                }else{
+                    imgLoad(array[getRandomInt(array.length)]["category_id"],2);
+                }
+			});
+    }
+    function imgLoad(category_id,entryNumber){
+        const postData_categorySearch = new FormData;
+        postData_categorySearch.set('table', 'videoCategory');
+        postData_categorySearch.set('function', 'categorySearch');
+        postData_categorySearch.set('category_id', category_id);
+        const data_categorySearch = {
+            method: 'POST',
+            body: postData_categorySearch
+        };
+        fetch('../cgi-bin/fetchInterface.php', data_categorySearch)
+            .then((res) => res.json())
+            .then((json)=>{
+                let array = json;
+                if(entryNumber == 1){
+                    console.log("分岐４ entryNumber="+entryNumber);
+                    let rand = getRandomInt(array.length);
+                    document.getElementById('video1').innerHTML 
+                    = "<img src="+array[rand]["video_picture"]+"alt=画像なし height=50%>"
+                    + "<input type='button' value='こっち！' onclick=setInteresting("+array[rand]["category_id"]+")>";
+                }else if(entryNumber == 2){
+                    console.log("分岐５ entryNumber="+entryNumber);
+                    let rand = getRandomInt(array.length);
+                    document.getElementById('video2').innerHTML 
+                    = "<img src="+array[rand]["video_picture"]+"alt=画像なし height=50%>"
+                    + "<input type='button' value='そっち！' onclick=setInteresting("+array[rand]["category_id"]+")>";
+                }
+            });
+    }
+    function setInteresting(category_id){
+        const postData_setInteresting = new FormData;
+        postData_setInteresting.set('table', 'interesting');
+        postData_setInteresting.set('function', 'setInteresting');
+        postData_setInteresting.set('user_idName', user_idName);
+        postData_setInteresting.set('user_pass', user_pass);
+        postData_setInteresting.set('category_id', category_id);
+        const data_setInteresting = {
+            method: 'POST',
+            body: postData_setInteresting
+        };
+        fetch('../cgi-bin/fetchInterface.php', data_setInteresting)
+            .then((res) => res.json())
+            .then((json)=>{
+                if(json === 0){
+                    console.log("分岐６ json="+json);
+                    console.log(category_id);
+                    getInteresting();
+                    getCategory(false);
+                }else{
+                    console.log("分岐７ json="+json);
+                    console.log("err");
+                    getInteresting();
+                    getCategory(false);
+                }
+            });
+    }
+    function getRandomInt(max) {
+        return Math.floor(Math.random() * Math.floor(max));
+    }
+</script>
